@@ -15,7 +15,7 @@ $RECYCLE.BIN/
 *.msp
 
 #Binaries
-*.exe
+#*.exe
 *.o
 
 #Code::Blocks
