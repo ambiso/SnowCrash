@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
         }
         else
         {
-            output = input + ".dec"; //for old version
+            output = input.substr(0,pos); //for old version
         }
     }
 
