@@ -58,54 +58,57 @@ void printHelp()
          << "  -e [FILENAME]\t\tEncode file to PNG" << endl
          << "  -d [FILENAME]\t\tDecode file" << endl
          << "  -f [FILENAME]\t\tSet output filename" << endl
-         << "  -w [WIDTH]\t\tSet width PNG" << endl << endl;
+         << "  -w [WIDTH]\t\tSet width PNG (invalid with -r or -d)" << endl
+         << "  -r\t\t\tUse recommended width" << endl
+         << "  -s [SIZE]\t\tWill only decode [SIZE] number of Bytes." << endl << endl;
     //cin.ignore();
 }
 
 int main(int argc, char* argv[])
 {
 
-    unsigned long long width = 0, height = 0;
+    unsigned long long width = 0, height = 0, setSize = 0;
 
     if(argc > 1)
     {
         string input, output;
 
-        bool mode = false;
-        bool w_set = false;
+        bool mode = false; //false = decode, true = encode
+        bool modeR = false; //true = auto set width to recommended
 
         if(argExist(argv, argv+argc, "h"))
         {
             printHelp();
             return 0;
         }
-        if(argExist(argv,argv+argc,"e"))
+        if(argExist(argv,argv+argc,"e")) //encode
         {
             input = string(argGet(argv,argv+argc, "e"));
             mode = true; //true = encode
             output = input + ".png";
         }
-        if(argExist(argv,argv+argc,"d"))
+        if(argExist(argv,argv+argc,"d")) //decode
         {
             input = string(argGet(argv,argv+argc, "d"));
             //false = decode
             output = input + ".dec";
         }
-        if(argExist(argv,argv+argc,"f"))
-        {
+        if(argExist(argv,argv+argc,"f")) //output filename
             output = argGet(argv,argv+argc, "f");
-        }
 
-        if(argExist(argv,argv+argc,"w"))
+        if(argExist(argv,argv+argc,"w")) //width
         {
-            string buffer = argGet(argv,argv+argc, "w");
-            width = atoi(buffer.c_str());
-            w_set = true;
+            width = atoi(argGet(argv,argv+argc, "w").c_str());
         }
+        if(argExist(argv,argv+argc,"r")) //use recommended width
+            modeR = true;
 
-        fstream f (input.c_str(), ios::in | ifstream::binary);
+        if(argExist(argv,argv+argc,"s")) //only write setSize amount of Bytes
+            setSize = atoi(argGet(argv,argv+argc, "s").c_str());
 
-        if(mode)
+        fstream f (input.c_str(), ios::in | ifstream::binary); //binary input stream
+
+        if(mode) //if encode?
         {
             if(f)
             {
@@ -121,40 +124,45 @@ int main(int argc, char* argv[])
                 if(f)
                     cout << "Read " << f.gcount() << " Bytes." << endl;
                 else
-                    cout << "Error: only " << f.gcount() << " Bytes were read." << endl;
+                    cout << "Error: Only " << f.gcount() << " Bytes were read." << endl;
 
-                vector<unsigned char> image_o;
-                image_o.reserve(f.gcount());
+                vector<unsigned char> imageO;
+                imageO.reserve(f.gcount());
                 for(unsigned long long i = 0; i < length; ++i)
-                    image_o.push_back(buffer[i]);
+                    imageO.push_back(buffer[i]);
                 delete[] buffer;
 
+                if(modeR) //if use recommended width
+                    width = ceil(sqrt(length/4));
                 cout << "Recommended width: " << ceil(sqrt(length/4)) << endl;
                 cout << "Width : ";
-                if(w_set)
+                if(width > 0)
                     cout << width << endl;
                 else
                     cin >> width;
                 height = ceil(static_cast<double>(length)/(4*width));
                 cout << "Height: " << height << endl;
 
-                if(image_o.size() < width*4*length)
-                    for(unsigned int i = image_o.size(); i < width*4*height; ++i)
-                        image_o.push_back(false);
+                if(imageO.size() < width*4*length) //add NUL to end of stream to match image size
+                    for(unsigned int i = imageO.size(); i < width*4*height; ++i)
+                        imageO.push_back(false);
 
-                encode(output.c_str(), image_o, width, height);
+                encode(output.c_str(), imageO, width, height);
             }
-
             f.close();
         }
         else
         {
             cout << "Decoding \"" << input << "\".." << endl;
-            vector<unsigned char> image_i(decode(input.c_str()));
+            vector<unsigned char> imageI(decode(input.c_str()));
             f.close();
+
             f.open(output.c_str(), ios::out | ofstream::binary);
             cout << "Writing to \"" << output << "\".." << endl;
-            f.write((char*)&image_i[0], streamsize(image_i.size()));
+            if(setSize == 0) //if setSize wasn't set
+                f.write((char*)&imageI[0], streamsize(imageI.size()));
+            else
+                f.write((char*)&imageI[0], setSize);
             f.close();
         }
     }
