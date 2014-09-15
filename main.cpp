@@ -117,7 +117,6 @@ int main(int argc, char* argv[])
 
                 cout << "Reading file \"" << input << "\".." << endl;
                 f.read(buffer, length);
-                delete[] buffer;
 
                 if(f)
                     cout << "Read " << f.gcount() << " Bytes." << endl;
@@ -125,11 +124,12 @@ int main(int argc, char* argv[])
                     cout << "Error: only " << f.gcount() << " Bytes were read." << endl;
 
                 vector<unsigned char> image_o;
+                image_o.reserve(f.gcount());
                 for(unsigned long long i = 0; i < length; ++i)
                     image_o.push_back(buffer[i]);
+                delete[] buffer;
 
-
-                cout << "Recommended width: " << static_cast<long long>(sqrt(length/4)) << endl;
+                cout << "Recommended width: " << ceil(sqrt(length/4)) << endl;
                 cout << "Width : ";
                 if(w_set)
                     cout << width << endl;
@@ -154,10 +154,7 @@ int main(int argc, char* argv[])
             f.close();
             f.open(output.c_str(), ios::out | ofstream::binary);
             cout << "Writing to \"" << output << "\".." << endl;
-            if(f)
-                f.write((char*)&image_i[0], streamsize(image_i.size()));
-            else
-                cout << "Error writing file.";
+            f.write((char*)&image_i[0], streamsize(image_i.size()));
             f.close();
         }
     }

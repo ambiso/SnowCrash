@@ -17,9 +17,11 @@ $RECYCLE.BIN/
 #Binaries
 *.exe
 *.o
+
 #Code::Blocks
 *.cbp
 *.depend
+*.layout
 
 # =========================
 # Operating System Files
