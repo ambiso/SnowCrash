@@ -91,7 +91,11 @@ int main(int argc, char* argv[])
         {
             mode = true;
             modeR = true;
-            output = input.substr(0,pos) + ".png"; //for old images
+            output = input.substr(0,pos) + ".png";
+        }
+        else
+        {
+            output = input + ".dec"; //for old version
         }
     }
 
