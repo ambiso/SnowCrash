@@ -68,6 +68,7 @@ int main(int argc, char* argv[])
 {
 
     unsigned long long width = 0, height = 0, setSize = 0;
+    unsigned int pos = string::npos, lastPos = string::npos; //find last dot in filename
     string input, output;
     bool mode = false; //false = decode, true = encode
     bool modeR = false; //true = auto set width to recommended
@@ -78,7 +79,6 @@ int main(int argc, char* argv[])
     if(argc == 2)
     {
         input = argv[1]; //input = filename
-        unsigned int pos = string::npos, lastPos = string::npos; //find last dot in filename
         do
         {
             lastPos = pos;
@@ -94,9 +94,7 @@ int main(int argc, char* argv[])
             output = input.substr(0,pos) + ".png";
         }
         else
-        {
             output = input.substr(0,pos); //for old version
-        }
     }
 
     if(argExist(argv, argv+argc, "h"))
@@ -120,7 +118,6 @@ int main(int argc, char* argv[])
         output = argGet(argv,argv+argc, "f");
         fSet = true;
     }
-
 
     if(argExist(argv,argv+argc,"w")) //width
     {
@@ -155,6 +152,28 @@ int main(int argc, char* argv[])
                 exit(1);
             }
 
+            //don't store relative path
+            pos = string::npos, lastPos = string::npos; //find last backslash in filename
+            do
+            {
+                lastPos = pos;
+                pos = input.find('\\',pos+1);
+            }
+            while(pos != string::npos);
+            pos = lastPos;
+
+            input = input.substr(pos+1);
+            pos = string::npos, lastPos = string::npos; //find last slash in filename
+            do
+            {
+                lastPos = pos;
+                pos = input.find('/',pos+1);
+            }
+            while(pos != string::npos);
+            pos = lastPos;
+
+            input = input.substr(pos+1);
+
             length = length + 5 + input.length(); //file length + magic num + \s + filename + version info
             vector<unsigned char> imageO;
             imageO.reserve(length);
@@ -165,7 +184,6 @@ int main(int argc, char* argv[])
             for(unsigned int i = 0; i < input.length(); ++i)
                 imageO.push_back(input[i]); //filename
             imageO.push_back('\0'); //end of filename
-            cout << length << endl;
 
             if(modeR) //if use recommended width
                 width = ceil(sqrt(length/4));
