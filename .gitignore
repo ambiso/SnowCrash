@@ -23,6 +23,9 @@ $RECYCLE.BIN/
 *.depend
 *.layout
 
+#Other
+*.png
+
 # =========================
 # Operating System Files
 # =========================
