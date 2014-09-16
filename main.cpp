@@ -136,7 +136,7 @@ int main(int argc, char* argv[])
         if(f)
         {
             f.seekg(0,f.end);
-            unsigned long long length = f.tellg();
+            unsigned long long length = f.tellg(), rSize = f.tellg();
             f.seekg(0, f.beg);
 
             char * buffer = new char [length];
@@ -153,6 +153,7 @@ int main(int argc, char* argv[])
             }
 
             //don't store relative path
+
             pos = string::npos, lastPos = string::npos; //find last backslash in filename
             do
             {
@@ -161,8 +162,8 @@ int main(int argc, char* argv[])
             }
             while(pos != string::npos);
             pos = lastPos;
-
             input = input.substr(pos+1);
+
             pos = string::npos, lastPos = string::npos; //find last slash in filename
             do
             {
@@ -171,10 +172,8 @@ int main(int argc, char* argv[])
             }
             while(pos != string::npos);
             pos = lastPos;
-
             input = input.substr(pos+1);
-
-            length = length + 5 + input.length(); //file length + magic num + \s + filename + version info
+            length = length + 5 + input.length() + sizeof(rSize); //file length + magic num + \s + filename + version info
             vector<unsigned char> imageO;
             imageO.reserve(length);
             imageO.push_back(255); //magic number ff 02 ff
@@ -184,6 +183,13 @@ int main(int argc, char* argv[])
             for(unsigned int i = 0; i < input.length(); ++i)
                 imageO.push_back(input[i]); //filename
             imageO.push_back('\0'); //end of filename
+
+            //memcpy(&imageO[4+input.length()], &rSize, sizeof(rSize));
+
+            /*cout << "\"";
+            for(unsigned int i = 0; i < imageO.size(); ++i)
+                cout << (int)imageO[i] << " ";
+            cout << "\"" << endl;*/
 
             if(modeR) //if use recommended width
                 width = ceil(sqrt(length/4));
@@ -213,8 +219,7 @@ int main(int argc, char* argv[])
         cout << "Decoding \"" << input << "\".." << endl;
         vector<unsigned char> imageI(decode(input.c_str()));
         f.close();
-
-        if(imageI[0] == 255 && imageI[1] == 2 && imageI[255] == false)
+        if(imageI[0] == 255 && imageI[1] == 2 && imageI[2] == 255)
         {
             if(imageI[3] == 1) //encoder version 1
             {
@@ -248,6 +253,7 @@ int main(int argc, char* argv[])
                 f.write((char*)&imageI[0], setSize);
         }
         f.close();
+
     }
 
     return 0;
