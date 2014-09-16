@@ -251,8 +251,6 @@ int main(int argc, char* argv[])
                 for(unsigned int i = 0; i < 8; ++i)
                     setSize += (unsigned long long)len[i]*(unsigned long long)pow(256,i);
 
-                cout << setSize << endl;
-
                 f.open(output.c_str(), ios::out | ofstream::binary);
                 cout << "Writing to \"" << output << "\".." << endl;
                 f.write((char*)&imageI[output.size() + 5 + 8], setSize);
