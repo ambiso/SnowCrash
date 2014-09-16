@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "lodepng.h"
 #include "lodepng.cpp"
+#include <bitset>
 
 using namespace std;
 
@@ -59,9 +60,21 @@ void printHelp()
          << "  -d [FILENAME]\t\tDecode file" << endl
          << "  -f [FILENAME]\t\tSet output filename" << endl
          << "  -w [WIDTH]\t\tSet width PNG (invalid with -r or -d)" << endl
-         << "  -r\t\t\tUse recommended width" << endl
-         << "  -s [SIZE]\t\tWill only decode [SIZE] number of Bytes." << endl << endl;
+         << "  -r\t\t\tUse recommended width" << endl << endl;
     exit(0);
+}
+
+string ToBase256(unsigned long long num)
+{
+    string conv;
+    while(num > 0)
+    {
+        conv += (unsigned char)(num % 256);
+        num /= 256;
+    }
+    while(conv.length() < 8)
+        conv += (unsigned char)num;
+    return string(conv.rbegin(), conv.rend());
 }
 
 int main(int argc, char* argv[])
@@ -126,9 +139,6 @@ int main(int argc, char* argv[])
     if(argExist(argv,argv+argc,"r")) //use recommended width
         modeR = true;
 
-    if(argExist(argv,argv+argc,"s")) //only write setSize amount of Bytes
-        setSize = atoi(argGet(argv,argv+argc, "s").c_str());
-
     fstream f (input.c_str(), ios::in | ifstream::binary); //binary input stream
 
     if(mode) //if encode?
@@ -179,17 +189,16 @@ int main(int argc, char* argv[])
             imageO.push_back(255); //magic number ff 02 ff
             imageO.push_back(2);
             imageO.push_back(255);
-            imageO.push_back(1); //hardcoded version information
+            imageO.push_back(2); //hardcoded version information
             for(unsigned int i = 0; i < input.length(); ++i)
                 imageO.push_back(input[i]); //filename
             imageO.push_back('\0'); //end of filename
 
-            //memcpy(&imageO[4+input.length()], &rSize, sizeof(rSize));
-
-            /*cout << "\"";
-            for(unsigned int i = 0; i < imageO.size(); ++i)
-                cout << (int)imageO[i] << " ";
-            cout << "\"" << endl;*/
+            string len = ToBase256(rSize);
+            for(int i = 0; i < 8; ++i)
+            {
+                imageO.push_back(len[i]);
+            }
 
             if(modeR) //if use recommended width
                 width = ceil(sqrt(length/4));
@@ -221,7 +230,34 @@ int main(int argc, char* argv[])
         f.close();
         if(imageI[0] == 255 && imageI[1] == 2 && imageI[2] == 255)
         {
-            if(imageI[3] == 1) //encoder version 1
+            if(imageI[3] == 2) //encoder v2, no more trailing zeros
+            {
+
+                if(!fSet)
+                {
+                    output = "";
+                    for(unsigned int i = 4; imageI[i] != '\0'; ++i)
+                        output += imageI[i];
+                }
+
+                string op;
+                for(unsigned int i = 4; imageI[i] != '\0'; ++i)
+                    op += imageI[i];
+
+                string len;
+                for(unsigned int i = op.length()+5; i < op.length()+5+8; ++i)
+                    len += (unsigned char)imageI[i];
+                len = string(len.rbegin(), len.rend());
+                for(unsigned int i = 0; i < 8; ++i)
+                    setSize += (unsigned long long)len[i]*(unsigned long long)pow(256,i);
+
+                cout << setSize << endl;
+
+                f.open(output.c_str(), ios::out | ofstream::binary);
+                cout << "Writing to \"" << output << "\".." << endl;
+                f.write((char*)&imageI[output.size() + 5 + 8], setSize);
+            }
+            else if(imageI[3] == 1) //encoder version 1
             {
                 if(!fSet)
                 {
@@ -238,7 +274,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                cout << "Decoder error!" << endl;
+                cout << "Error: Unknown Version Information." << endl;
                 exit(1);
             }
 
