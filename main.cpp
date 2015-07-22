@@ -1,87 +1,25 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include <math.h>
+#include <cmath>
 #include <algorithm>
 #include "lodepng.h"
-#include "lodepng.cpp"
 #include <bitset>
 
 using namespace std;
 
-void encode(const char* filename, std::vector<unsigned char>& image, unsigned width, unsigned height)
-{
-  //Encode the image
-  unsigned error = lodepng::encode(filename, image, width, height);
-
-  //if there's an error, display it
-  if(error) std::cout << "encoder error " << error << ": "<< lodepng_error_text(error) << std::endl;
-}
-
-vector<unsigned char> decode(const char* filename)
-{
-  std::vector<unsigned char> image; //the raw pixels (RGBA)
-  unsigned width, height;
-
-  //decode
-  unsigned error = lodepng::decode(image, width, height, filename);
-
-  //if there's an error, display it
-  if(error) std::cout << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
-
-  return image;
-}
-
-//from stackoverflow
-string argGet(char ** begin, char ** end, const std::string & option)
-{
-    char ** itr = std::find(begin, end, "-"+option);
-    if (itr != end && ++itr != end)
-        return *itr;
-    itr = std::find(begin, end, "--"+option);
-    if (itr != end && ++itr != end)
-        return *itr;
-    itr = std::find(begin, end, "/"+option);
-    if (itr != end && ++itr != end)
-        return *itr;
-    return "";
-}
-
-bool argExist(char** begin, char** end, const std::string& option)
-{
-    return std::find(begin, end, "-"+option) != end || std::find(begin, end, "--"+option) != end || std::find(begin, end, "/"+option) != end;
-}
-
-void printHelp()
-{
-    cout << "Usage: SnowCrash [OPTIONS]" << endl
-         << "SnowCrash will convert files into PNGs and back" << endl << endl
-         << "  -e [FILENAME]\t\tEncode file to PNG" << endl
-         << "  -d [FILENAME]\t\tDecode file" << endl
-         << "  -f [FILENAME]\t\tSet output filename" << endl
-         << "  -w [WIDTH]\t\tSet width PNG (invalid with -r or -d)" << endl
-         << "  -r\t\t\tUse recommended width" << endl << endl;
-    exit(0);
-}
-
-string ToBase256(unsigned long long num)
-{
-    string conv;
-    while(num > 0)
-    {
-        conv += (unsigned char)(num % 256);
-        num /= 256;
-    }
-    while(conv.length() < 8)
-        conv += (unsigned char)num;
-    return string(conv.rbegin(), conv.rend());
-}
+void encode(const char* filename, std::vector<unsigned char>& image, unsigned width, unsigned height);
+vector<unsigned char> decode(const char* filename);
+string argGet(char ** begin, char ** end, const std::string & option);
+bool argExist(char** begin, char** end, const std::string& option);
+[[noreturn]] void printHelp();
+string ToBase256(unsigned long num);
 
 int main(int argc, char* argv[])
 {
 
-    unsigned long long width = 0, height = 0, setSize = 0;
-    unsigned int pos = string::npos, lastPos = string::npos; //find last dot in filename
+    unsigned long width = 0, height = 0, setSize = 0;
+    unsigned long pos = string::npos, lastPos = string::npos; //find last dot in filename
     string input, output;
     bool mode = false; //false = decode, true = encode
     bool modeR = false; //true = auto set width to recommended
@@ -134,7 +72,7 @@ int main(int argc, char* argv[])
 
     if(argExist(argv,argv+argc,"w")) //width
     {
-        width = atoi(argGet(argv,argv+argc, "w").c_str());
+        width = strtoul(argGet(argv,argv+argc, "w").c_str(), NULL, 10);
     }
     if(argExist(argv,argv+argc,"r")) //use recommended width
         modeR = true;
@@ -146,7 +84,7 @@ int main(int argc, char* argv[])
         if(f)
         {
             f.seekg(0,f.end);
-            unsigned long long length = f.tellg(), rSize = f.tellg();
+            long length = f.tellg(), rSize = f.tellg();
             f.seekg(0, f.beg);
 
             char * buffer = new char [length];
@@ -183,43 +121,43 @@ int main(int argc, char* argv[])
             while(pos != string::npos);
             pos = lastPos;
             input = input.substr(pos+1);
-            length = length + 5 + input.length() + sizeof(rSize); //file length + magic num + \s + filename + version info
+            length = length + 5 + static_cast<long>(input.length() + sizeof(rSize)); //file length + magic num + \s + filename + version info
             vector<unsigned char> imageO;
-            imageO.reserve(length);
+            imageO.reserve(static_cast<unsigned long>(length));
             imageO.push_back(255); //magic number ff 02 ff
             imageO.push_back(2);
             imageO.push_back(255);
             imageO.push_back(2); //hardcoded version information
             for(unsigned int i = 0; i < input.length(); ++i)
-                imageO.push_back(input[i]); //filename
+                imageO.push_back(static_cast<unsigned char>(input[i])); //filename
             imageO.push_back('\0'); //end of filename
 
-            string len = ToBase256(rSize);
-            for(int i = 0; i < 8; ++i)
+            string len = ToBase256(static_cast<unsigned long>(rSize));
+            for(size_t i = 0; i < 8; ++i)
             {
-                imageO.push_back(len[i]);
+                imageO.push_back(static_cast<unsigned char>(len[i]));
             }
 
             if(modeR) //if use recommended width
-                width = ceil(sqrt(length/4));
+                width = static_cast<unsigned long>(ceil(sqrt(length/4)));
             cout << "Recommended width: " << ceil(sqrt(length/4)) << endl;
             cout << "Width : ";
             if(width > 0)
                 cout << width << endl;
             else
                 cin >> width;
-            height = ceil(static_cast<double>(length)/(4*width));
+            height = static_cast<unsigned long>(ceil(static_cast<double>(length)/(4*width)));
             cout << "Height: " << height << endl;
 
-            for(unsigned long long i = 0; i < length-5-input.length(); ++i)
-                imageO.push_back(buffer[i]);
+            for(unsigned long i = 0; i < static_cast<unsigned long>(length)-5-input.length(); ++i)
+                imageO.push_back(static_cast<unsigned char>(buffer[i]));
             delete[] buffer;
 
-            if(imageO.size() < width*4*length) //add NUL to end of stream to match image size
-                for(unsigned int i = imageO.size(); i < width*4*height; ++i)
+            if(imageO.size() < width*4*static_cast<unsigned long>(length)) //add NUL to end of stream to match image size
+                for(unsigned long i = imageO.size(); i < width*4*height; ++i)
                     imageO.push_back(false);
 
-            encode(output.c_str(), imageO, width, height);
+            encode(output.c_str(), imageO, static_cast<unsigned int>(width), static_cast<unsigned int>(height));
         }
         f.close();
     }
@@ -237,23 +175,23 @@ int main(int argc, char* argv[])
                 {
                     output = "";
                     for(unsigned int i = 4; imageI[i] != '\0'; ++i)
-                        output += imageI[i];
+                        output += static_cast<char>(imageI[i]);
                 }
 
                 string op;
                 for(unsigned int i = 4; imageI[i] != '\0'; ++i)
-                    op += imageI[i];
+                    op += static_cast<char>(imageI[i]);
 
                 string len;
-                for(unsigned int i = op.length()+5; i < op.length()+5+8; ++i)
-                    len += (unsigned char)imageI[i];
+                for(size_t i = op.length()+5; i < op.length()+5+8; ++i)
+                    len += static_cast<char>(imageI[i]);
                 len = string(len.rbegin(), len.rend());
                 for(unsigned int i = 0; i < 8; ++i)
-                    setSize += (unsigned long long)len[i]*(unsigned long long)pow(256,i);
+                    setSize += static_cast<unsigned long>(len[i])*static_cast<unsigned long>(pow(256,i));
 
                 f.open(output.c_str(), ios::out | ofstream::binary);
                 cout << "Writing to \"" << output << "\".." << endl;
-                f.write((char*)&imageI[output.size() + 5 + 8], setSize);
+                f.write(reinterpret_cast<char*>(&imageI[output.size() + 5 + 8]), static_cast<long>(setSize));
             }
             else if(imageI[3] == 1) //encoder version 1
             {
@@ -261,14 +199,14 @@ int main(int argc, char* argv[])
                 {
                     output = "";
                     for(unsigned int i = 4; imageI[i] != '\0'; ++i)
-                        output += imageI[i];
+                        output += static_cast<char>(imageI[i]);
                 }
                 f.open(output.c_str(), ios::out | ofstream::binary);
                 cout << "Writing to \"" << output << "\".." << endl;
                 if(setSize == 0) //if setSize wasn't set
-                    f.write((char*)&imageI[output.size() + 5], streamsize(imageI.size()) - 5 - output.size());
+                    f.write(reinterpret_cast<char*>(&imageI[output.size() + 5]), static_cast<long>(imageI.size() - 5 - output.size()));
                 else
-                    f.write((char*)&imageI[output.size() + 5], setSize);
+                    f.write(reinterpret_cast<char*>(&imageI[output.size() + 5]), static_cast<long>(setSize));
             }
             else
             {
@@ -282,13 +220,80 @@ int main(int argc, char* argv[])
             f.open(output.c_str(), ios::out | ofstream::binary);
             cout << "Writing to \"" << output << "\".." << endl;
             if(setSize == 0) //if setSize wasn't set
-                f.write((char*)&imageI[0], streamsize(imageI.size()));
+                f.write(reinterpret_cast<char*>(&imageI[0]), streamsize(imageI.size()));
             else
-                f.write((char*)&imageI[0], setSize);
+                f.write(reinterpret_cast<char*>(&imageI[0]), static_cast<long>(setSize));
         }
         f.close();
 
     }
 
     return 0;
+}
+
+void encode(const char* filename, std::vector<unsigned char>& image, unsigned width, unsigned height)
+{
+  //Encode the image
+  unsigned error = lodepng::encode(filename, image, width, height);
+
+  //if there's an error, display it
+  if(error) std::cout << "encoder error " << error << ": "<< lodepng_error_text(error) << std::endl;
+}
+
+vector<unsigned char> decode(const char* filename)
+{
+  std::vector<unsigned char> image; //the raw pixels (RGBA)
+  unsigned width, height;
+
+  //decode
+  unsigned error = lodepng::decode(image, width, height, filename);
+
+  //if there's an error, display it
+  if(error) std::cout << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
+
+  return image;
+}
+
+string argGet(char ** begin, char ** end, const std::string & option)
+{
+    char ** itr = std::find(begin, end, "-"+option);
+    if (itr != end && ++itr != end)
+        return *itr;
+    itr = std::find(begin, end, "--"+option);
+    if (itr != end && ++itr != end)
+        return *itr;
+    itr = std::find(begin, end, "/"+option);
+    if (itr != end && ++itr != end)
+        return *itr;
+    return "";
+}
+
+bool argExist(char** begin, char** end, const std::string& option)
+{
+    return std::find(begin, end, "-"+option) != end || std::find(begin, end, "--"+option) != end || std::find(begin, end, "/"+option) != end;
+}
+
+[[noreturn]] void printHelp()
+{
+    cout << "Usage: SnowCrash [OPTIONS]" << endl
+         << "SnowCrash will convert files into PNGs and back" << endl << endl
+         << "  -e [FILENAME]\t\tEncode file to PNG" << endl
+         << "  -d [FILENAME]\t\tDecode file" << endl
+         << "  -f [FILENAME]\t\tSet output filename" << endl
+         << "  -w [WIDTH]\t\tSet width PNG (invalid with -r or -d)" << endl
+         << "  -r\t\t\tUse recommended width" << endl << endl;
+    exit(0);
+}
+
+string ToBase256(unsigned long num)
+{
+    string conv;
+    while(num > 0)
+    {
+        conv += static_cast<char>(num % 256);
+        num /= 256;
+    }
+    while(conv.length() < 8)
+        conv += static_cast<char>(num);
+    return string(conv.rbegin(), conv.rend());
 }
