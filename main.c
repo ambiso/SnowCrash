@@ -159,7 +159,7 @@ void print_help() {
     puts("\t-o [FILE]\t specify where to save the output");
     puts("\t-f [FILE]\t specify the filename to store instead of the actual filename \n\t\t\t (cannot be used with -d)");
     puts("\t-l       \t enable legacy mode for traditional snowcrash files (must provide -o)");
-    puts("\t-u       \t ignore unusual characters warning when decoding");
+    puts("\t-u       \t ignore unusual characters warning");
     puts("");
     puts("EXAMPLES:");
     #define HELP_FORMAT "\t%-38s - %s\n"
@@ -268,8 +268,10 @@ int encode_file(char const *filename, char const *storename, char const *output_
         fprintf(stderr, "Please choose another one using the -f option.\n");
         return 1;
     }
-    if(!whitelisted_string(storename)) {
+    if(!unsafe && !whitelisted_string(storename)) {
         fprintf(stderr, "Filename '%s' contains unusual characters.\n", storename);
+        fprintf(stderr, "Supply -u to ignore this warning.\n");
+        return 1;
     }
     FILE * fp = fopen(filename, "rb");
     if(!fp) {

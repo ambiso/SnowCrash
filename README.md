@@ -16,7 +16,7 @@ snowcrash [OPTIONS] file
   -f [FILE]   specify what filename to store inside the PNG (cannot be used in conjunction with -d)
   -l          enable legacy mode to en- or decode the traditional way 
               (must use -o, does not store filename or size - you will end up with trailing NULs)
-  -u          ignore unusual character warning when decoding
+  -u          ignore unusual character
 If not using -e or -d the mode is determined by the file-extension - if ".png" it's decoded, otherwise encoded.
 ```
 ## Examples
