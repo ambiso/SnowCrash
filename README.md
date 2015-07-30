@@ -14,6 +14,8 @@ snowcrash [OPTIONS] file
   -d [FILE]   decode a file
   -o [FILE]   specify where to store the output
   -f [FILE]   specify what filename to store inside the PNG (cannot be used in conjunction with -d)
+  -l          enable legacy mode to en- or decode the traditional way 
+              (must use -o, does not store filename or size - you will end up with trailing NULs)
 If not using -e or -d the mode is determined by the fileextension - if ".png" it's decoded, otherwise encoded.
 ```
 ## Examples
