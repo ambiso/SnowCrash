@@ -343,7 +343,7 @@ int decode_file(char const *filename, char *output_file, int legacy) {
             for(; img[pos+filename_length] != '\0'; filename_length++);
             if(filename_length > MAX_FILENAME_LEN) {
                 fprintf(stderr, "Stored output filename is too long.\n");
-                fprintf(stderr, DECODE_FILENAME_ERR_HELP_MSG);
+                fprintf(stderr, "Try rerunning in legacy mode with -l or supply an output file using -o.\n");
                 return 1;
             }
             if(blacklisted_string((char*)(img+pos))) {
