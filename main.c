@@ -4,6 +4,7 @@
 #include <math.h>
 #include <assert.h>
 #include <unistd.h>
+#include <limits.h>
 #include "lodepng.h"
 
 #ifdef _WIN32
@@ -36,7 +37,7 @@ int main(int argc, char **argv)
 {
     //sanity checks
     assert(sizeof (uint64_t) == 8);
-    assert(sizeof (unsigned char) == 1);
+    assert(CHAR_BIT == 8);
 
     enum _mode mode = MOD_NONE;
     char *input = NULL;
