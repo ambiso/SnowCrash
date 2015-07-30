@@ -4656,7 +4656,7 @@ unsigned lodepng_decode(unsigned char** out, unsigned* w, unsigned* h,
     /*TODO: check if this works according to the statement in the documentation: "The converter can convert
     from greyscale input color type, to 8-bit greyscale or greyscale with alpha"*/
     if(!(state->info_raw.colortype == LCT_RGB || state->info_raw.colortype == LCT_RGBA)
-       && !(state->info_raw.bitdepth == 8))
+       && state->info_raw.bitdepth != 8)
     {
       return 56; /*unsupported color mode conversion*/
     }
