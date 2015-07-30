@@ -185,6 +185,7 @@ static char * cut_delim(char * str) {
 }
 
 int encode_file(char const *filename, char const *storename, char const *output_file, int legacy) {
+    printf("Encoding to '%s'.\n", output_file);
     FILE * fp = fopen(filename, "rb");
     if(!fp) {
         perror("Cannot open input");
@@ -227,13 +228,13 @@ int encode_file(char const *filename, char const *storename, char const *output_
         return 1;
     }
     fclose(fp);
-    printf("Encoding to '%s'.\n", output_file);
     PNG_encode(output_file, content, dimension, dimension);
     free(content);
     return 0;
 }
 
 int decode_file(char const *filename, char *output_file, int legacy) {
+    printf("Decoding to '%s'.\n", output_file);
     int out_file_provided = (output_file) ? 1 : 0;
     unsigned width, height;
     unsigned char * img = PNG_decode(filename, &width, &height);
@@ -279,7 +280,6 @@ int decode_file(char const *filename, char *output_file, int legacy) {
     } else {
         size = width * height * 4;
     }
-    printf("Decoding to '%s'.\n", output_file);
     FILE * fp = fopen(output_file, "wb");
     fwrite(img+pos, 1, size, fp);
     fclose(fp);
