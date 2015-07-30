@@ -47,7 +47,7 @@ int main(int argc, char **argv)
 
     int opt;
     while(optind < argc) {
-        if ((opt = getopt(argc, argv, "e:f:d:o:f:l")) != -1) {
+        if ((opt = getopt(argc, argv, "e:f:d:o:l")) != -1) {
             switch (opt) {
                 case 'e':
                     mode |= MOD_ENCODE;
