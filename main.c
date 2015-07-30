@@ -192,31 +192,27 @@ static char * cut_delim(char * str) {
 
 int _getopt(int argc, char **argv, char * optstr) {
     //search next option
-    int local_optind = _optind;
-    for (; local_optind < argc && argv[local_optind][0] != '-'; local_optind++);
-    //no more args
-    if (local_optind >= argc) {
+    if (_optind >= argc || argv[_optind][0] != '-') {
         return -1;
     }
-    char *option = strchr(optstr, argv[local_optind][1]);
+    char *option = strchr(optstr, argv[_optind][1]);
     //option not found
     if(*option == '\0') {
-        fprintf(stderr, "Invalid argument %s.\n", argv[local_optind]);
+        fprintf(stderr, "Invalid argument %s.\n", argv[_optind]);
         return 0;
     }
     //does option need args?
     if(*(option+1) == ':') {
-        if(argc < local_optind +1) {
-            fprintf(stderr, "Option %s requires an argument.\n", argv[local_optind]);
+        if(argc < _optind +1) {
+            fprintf(stderr, "Option %s requires an argument.\n", argv[_optind]);
             return 0;
         }
-        local_optind++;
-        _optarg = argv[local_optind];
-        local_optind++;
+        _optind++;
+        _optarg = argv[_optind];
+        _optind++;
     } else {
-        local_optind++;
+        _optind++;
     }
-    _optind = local_optind;
     return *option;
 }
 
