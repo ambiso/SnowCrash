@@ -3,7 +3,6 @@
 #include <inttypes.h>
 #include <math.h>
 #include <assert.h>
-#include <unistd.h>
 #include <limits.h>
 #include "lodepng.h"
 
@@ -34,6 +33,10 @@ int decode_file(char const *filename, char *output_file, int legacy);
 void PNG_encode(const char *filename, const unsigned char *image, unsigned width, unsigned height);
 unsigned char *PNG_decode(const char *filename, unsigned *width, unsigned *height);
 
+static int _optind = 1;
+static char *_optarg = NULL;
+int _getopt(int argc, char **argv, char * optstr);
+
 int main(int argc, char **argv)
 {
     //sanity checks
@@ -46,8 +49,8 @@ int main(int argc, char **argv)
     char *output = NULL;
 
     int opt;
-    while(optind < argc) {
-        if ((opt = getopt(argc, argv, "e:f:d:o:l")) != -1) {
+    while(_optind < argc) {
+        if ((opt = _getopt(argc, argv, "e:f:d:o:lh")) != -1) {
             switch (opt) {
                 case 'e':
                     mode |= MOD_ENCODE;
@@ -66,12 +69,15 @@ int main(int argc, char **argv)
                 case 'l':
                     mode |= MOD_LEGACY;
                     break;
+                case 'h':
+                    print_help();
+                    return 0;
                 default:
                     fprintf(stderr, "Internal error.\n");
-                    exit(1);
+                    return 1;
             }
         } else {
-            auto_mode(argv[optind++], &input, &mode);
+            auto_mode(argv[_optind++], &input, &mode);
         }
     }
 
@@ -150,11 +156,11 @@ void print_help() {
 }
 
 static void argcpy(char **rop) {
-    if(!(*rop = malloc(strlen(optarg)+1))) {
+    if(!(*rop = malloc(strlen(_optarg)+1))) {
         perror(MEMORY_ERR);
         exit(1);
     }
-    strcpy(*rop, optarg);
+    strcpy(*rop, _optarg);
 }
 
 void auto_mode(char *arg, char **input, enum _mode *mode) {
@@ -182,6 +188,36 @@ static char * cut_delim(char * str) {
     }
     strcpy(rop, str+i);
     return rop;
+}
+
+int _getopt(int argc, char **argv, char * optstr) {
+    //search next option
+    int local_optind = _optind;
+    for (; local_optind < argc && argv[local_optind][0] != '-'; local_optind++);
+    //no more args
+    if (local_optind >= argc) {
+        return -1;
+    }
+    char *option = strchr(optstr, argv[local_optind][1]);
+    //option not found
+    if(*option == '\0') {
+        fprintf(stderr, "Invalid argument %s.\n", argv[local_optind]);
+        return 0;
+    }
+    //does option need args?
+    if(*(option+1) == ':') {
+        if(argc < local_optind +1) {
+            fprintf(stderr, "Option %s requires an argument.\n", argv[local_optind]);
+            return 0;
+        }
+        local_optind++;
+        _optarg = argv[local_optind];
+        local_optind++;
+    } else {
+        local_optind++;
+    }
+    _optind = local_optind;
+    return *option;
 }
 
 int encode_file(char const *filename, char const *storename, char const *output_file, int legacy) {
@@ -234,8 +270,11 @@ int encode_file(char const *filename, char const *storename, char const *output_
 }
 
 int decode_file(char const *filename, char *output_file, int legacy) {
-    printf("Decoding to '%s'.\n", output_file);
-    int out_file_provided = (output_file) ? 1 : 0;
+    int out_file_provided = 0;
+    if(output_file) {
+        out_file_provided = 1;
+        printf("Decoding to '%s'.\n", output_file);
+    }
     unsigned width, height;
     unsigned char * img = PNG_decode(filename, &width, &height);
     size_t pos = 0;
@@ -272,6 +311,7 @@ int decode_file(char const *filename, char *output_file, int legacy) {
             for (int i = 0; output_file[i] != '\0'; i++) {
                 if (output_file[i] == DELIM) {
                     fprintf(stderr, "Input file contains a path delimiter and may be malicious.\n");
+                    fprintf(stderr, "Use -o to set where to store the resulting file.\n");
                     return 1;
                 }
             }
@@ -279,6 +319,9 @@ int decode_file(char const *filename, char *output_file, int legacy) {
         pos++;
     } else {
         size = width * height * 4;
+    }
+    if(!out_file_provided) {
+        printf("Decoding to '%s'.\n", output_file);
     }
     FILE * fp = fopen(output_file, "wb");
     fwrite(img+pos, 1, size, fp);
