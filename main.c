@@ -100,7 +100,8 @@ int main(int argc, char **argv)
         return 1;
     }
     if(((mode & MOD_DECODE) && (name_to_store))) {
-        fprintf(stderr, "You cannot use -f when decoding. If you're trying to encode please supply -e.\n");
+        fprintf(stderr, "You cannot use -f when decoding.\n");
+        fprintf(stderr, "If you're trying to encode please supply -e.\n");
         return 1;
     }
     if((mode & MOD_LEGACY) && !output) {
@@ -212,6 +213,8 @@ static int whitelisted_string(char const * x) {
 }
 
 static int blacklisted_string(char const * x) {
+    if(strcmp(x, ".") == 0 || strcmp(x, "..") == 0)
+        return 1;
     for(; *x != '\0'; x++)
         if(blacklisted_char(*x))
             return 1;
@@ -223,7 +226,7 @@ static int whitelisted_char(char x) { //whitelisted characters
 }
 
 static int blacklisted_char(char x) {
-    return strchr("/\\\"%$!*~<>:|?", x) != NULL; //windows...
+    return strchr("/\\\"%!*~<>:|?", x) != NULL; //windows...
 }
 
 int _getopt(int argc, char **argv, char * optstr) {
