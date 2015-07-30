@@ -222,7 +222,7 @@ static int blacklisted_string(char const * x) {
 }
 
 static int whitelisted_char(char x) { //whitelisted characters
-    return isalpha(x) || isdigit(x) || strchr(" -,.", x) != NULL;
+    return isalpha(x) || isdigit(x) || strchr(" -,.()", x) != NULL;
 }
 
 static int blacklisted_char(char x) {
