@@ -29,8 +29,8 @@ static void argcpy(char **rop);
 static void auto_mode(char * arg, char **input, enum _mode *mode);
 static char * cut_delim(char * str);
 
-static int whitelisted_string(char const *const x, size_t len);
-static int blacklisted_string(char const *const x, size_t len);
+static int whitelisted_string(char const * x);
+static int blacklisted_string(char const * x);
 static int whitelisted_char(char x);
 static int blacklisted_char(char x);
 
@@ -100,7 +100,7 @@ int main(int argc, char **argv)
         return 1;
     }
     if(((mode & MOD_DECODE) && (name_to_store))) {
-        fprintf(stderr, "You cannot use -f when decoding. If you're trying to encode please provide -e.");
+        fprintf(stderr, "You cannot use -f when decoding. If you're trying to encode please supply -e.\n");
         return 1;
     }
     if((mode & MOD_LEGACY) && !output) {
@@ -204,25 +204,24 @@ static char * cut_delim(char * str) {
 }
 
 
-static int whitelisted_string(char const * const x, size_t len) {
-    for(size_t i = 0; i < len; i++) {
-        if(!whitelisted_char(x[i])) {
+static int whitelisted_string(char const * x) {
+    for(; *x != '\0'; x++)
+        if(!whitelisted_char(*x))
             return 0;
-        }
-    }
     return 1;
 }
-static int blacklisted_string(char const * const x, size_t len) {
-    for(size_t i = 0; i < len; i++) {
-        if(blacklisted_char(x[i])) {
+
+static int blacklisted_string(char const * x) {
+    for(; *x != '\0'; x++)
+        if(blacklisted_char(*x))
             return 1;
-        }
-    }
     return 0;
 }
+
 static int whitelisted_char(char x) { //whitelisted characters
     return isalpha(x) || isdigit(x) || strchr(" -,.", x) != NULL;
 }
+
 static int blacklisted_char(char x) {
     return strchr("/\\\"%$!*~<>:|?", x) != NULL; //windows...
 }
@@ -261,12 +260,12 @@ int encode_file(char const *filename, char const *storename, char const *output_
         fprintf(stderr, "Please choose another one using the -f option.\n");
         return 1;
     }
-    if(blacklisted_string(storename, filename_length)) {
+    if(blacklisted_string(storename)) {
         fprintf(stderr, "Filename '%s' contains blacklisted characters.\n", storename);
         fprintf(stderr, "Please choose another one using the -f option.\n");
         return 1;
     }
-    if(!whitelisted_string(storename, filename_length)) {
+    if(!whitelisted_string(storename)) {
         fprintf(stderr, "Filename '%s' contains unusual characters.\n", storename);
     }
     FILE * fp = fopen(filename, "rb");
@@ -344,12 +343,12 @@ int decode_file(char const *filename, char *output_file, int legacy) {
                 fprintf(stderr, DECODE_FILENAME_ERR_HELP_MSG);
                 return 1;
             }
-            if(blacklisted_string((char*)(img+pos), filename_length)) {
+            if(blacklisted_string((char*)(img+pos))) {
                 fprintf(stderr, "Stored filename contains blacklisted characters.\n");
                 fprintf(stderr, DECODE_FILENAME_ERR_HELP_MSG);
                 return 1;
             }
-            if(!unsafe && !whitelisted_string((char*)(img+pos), filename_length)) {
+            if(!unsafe && !whitelisted_string((char*)(img+pos))) {
                 fprintf(stderr, "Stored filename contains unusual characters.\n");
                 fprintf(stderr, DECODE_FILENAME_ERR_HELP_MSG);
                 fprintf(stderr, "Or supply -u to ignore this warning.\n");
