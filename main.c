@@ -4,15 +4,18 @@
 #include <math.h>
 #include <assert.h>
 #include <limits.h>
+#include <ctype.h>
 #include "lodepng.h"
 
 #ifdef _WIN32
-#define DELIM '\\'
+    #define DELIM '\\'
 #else
-#define DELIM '/'
+    #define DELIM '/'
 #endif
 
-#define MEMORY_ERR "Cannot allocate memory"
+static char const * const MEMORY_ERR = "Cannot allocate memory";
+static size_t const MAX_FILENAME_LEN = 254;
+static int unsafe = 0;
 
 enum _mode {
     MOD_NONE = 0,
@@ -21,11 +24,15 @@ enum _mode {
     MOD_LEGACY = 1 << 2
 };
 
-
 static void print_help(void);
 static void argcpy(char **rop);
 static void auto_mode(char * arg, char **input, enum _mode *mode);
 static char * cut_delim(char * str);
+
+static int whitelisted_string(char const *const x, size_t len);
+static int blacklisted_string(char const *const x, size_t len);
+static int whitelisted_char(char x);
+static int blacklisted_char(char x);
 
 int encode_file(char const *filename, char const *storename, char const *output_file, int legacy);
 int decode_file(char const *filename, char *output_file, int legacy);
@@ -50,7 +57,7 @@ int main(int argc, char **argv)
 
     int opt;
     while(_optind < argc) {
-        if ((opt = _getopt(argc, argv, "e:f:d:o:lh")) != -1) {
+        if ((opt = _getopt(argc, argv, "e:f:d:o:lhu")) != -1) {
             switch (opt) {
                 case 'e':
                     mode |= MOD_ENCODE;
@@ -72,6 +79,9 @@ int main(int argc, char **argv)
                 case 'h':
                     print_help();
                     return 0;
+                case 'u':
+                    unsafe = !unsafe;
+                    break;
                 default:
                     fprintf(stderr, "Internal error.\n");
                     return 1;
@@ -119,10 +129,12 @@ int main(int argc, char **argv)
         }
         if(encode_file(input, name_to_store, output, mode & MOD_LEGACY)) {
             fprintf(stderr, "Error while encoding.\n");
+            return 1;
         }
     } else if(mode & MOD_DECODE) {
         if(decode_file(input, output, mode & MOD_LEGACY)) {
             fprintf(stderr, "Error while decoding.\n");
+            return 1;
         }
     }
     if(output) {
@@ -143,9 +155,10 @@ void print_help() {
     puts("Unless specified by -e or -d a file will be encoded if its suffix is '.png' or decoded otherwise");
     puts("\t-e [FILE]\t encode a file");
     puts("\t-d [FILE]\t decode a file");
-    puts("\t-o [PATH]\t specify where to save the output");
+    puts("\t-o [FILE]\t specify where to save the output");
     puts("\t-f [FILE]\t specify the filename to store instead of the actual filename \n\t\t\t (cannot be used with -d)");
     puts("\t-l       \t enable legacy mode for traditional snowcrash files (must provide -o)");
+    puts("\t-u       \t ignore unusual characters warning when decoding");
     puts("");
     puts("EXAMPLES:");
     #define HELP_FORMAT "\t%-38s - %s\n"
@@ -190,6 +203,30 @@ static char * cut_delim(char * str) {
     return rop;
 }
 
+
+static int whitelisted_string(char const * const x, size_t len) {
+    for(size_t i = 0; i < len; i++) {
+        if(!whitelisted_char(x[i])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+static int blacklisted_string(char const * const x, size_t len) {
+    for(size_t i = 0; i < len; i++) {
+        if(blacklisted_char(x[i])) {
+            return 1;
+        }
+    }
+    return 0;
+}
+static int whitelisted_char(char x) { //whitelisted characters
+    return isalpha(x) || isdigit(x) || strchr(" -,.", x) != NULL;
+}
+static int blacklisted_char(char x) {
+    return strchr("/\\\"%$!*~<>:|?", x) != NULL; //windows...
+}
+
 int _getopt(int argc, char **argv, char * optstr) {
     //search next option
     if (_optind >= argc || argv[_optind][0] != '-') {
@@ -197,7 +234,7 @@ int _getopt(int argc, char **argv, char * optstr) {
     }
     char *option = strchr(optstr, argv[_optind][1]);
     //option not found
-    if(*option == '\0') {
+    if(!option || *option == '\0') {
         fprintf(stderr, "Invalid argument %s.\n", argv[_optind]);
         return 0;
     }
@@ -218,6 +255,20 @@ int _getopt(int argc, char **argv, char * optstr) {
 
 int encode_file(char const *filename, char const *storename, char const *output_file, int legacy) {
     printf("Encoding to '%s'.\n", output_file);
+    size_t filename_length = strlen(storename);
+    if(filename_length > MAX_FILENAME_LEN) {
+        fprintf(stderr, "Filename '%s' is too long.\n", storename);
+        fprintf(stderr, "Please choose another one using the -f option.\n");
+        return 1;
+    }
+    if(blacklisted_string(storename, filename_length)) {
+        fprintf(stderr, "Filename '%s' contains blacklisted characters.\n", storename);
+        fprintf(stderr, "Please choose another one using the -f option.\n");
+        return 1;
+    }
+    if(!whitelisted_string(storename, filename_length)) {
+        fprintf(stderr, "Filename '%s' contains unusual characters.\n", storename);
+    }
     FILE * fp = fopen(filename, "rb");
     if(!fp) {
         perror("Cannot open input");
@@ -284,33 +335,32 @@ int decode_file(char const *filename, char *output_file, int legacy) {
         if (out_file_provided) {
             for (; img[pos] != '\0'; pos++); //skip stored filename
         } else {
-            size_t filename_length = 1, fileit;
-            if (!(output_file = malloc(filename_length))) { //array list
+            size_t filename_length = 0;
+            //full input verification
+            #define DECODE_FILENAME_ERR_HELP_MSG "Use -o to set where to store the resulting file.\n"
+            for(; img[pos+filename_length] != '\0'; filename_length++);
+            if(filename_length > MAX_FILENAME_LEN) {
+                fprintf(stderr, "Stored output filename is too long.\n");
+                fprintf(stderr, DECODE_FILENAME_ERR_HELP_MSG);
+                return 1;
+            }
+            if(blacklisted_string((char*)(img+pos), filename_length)) {
+                fprintf(stderr, "Stored filename contains blacklisted characters.\n");
+                fprintf(stderr, DECODE_FILENAME_ERR_HELP_MSG);
+                return 1;
+            }
+            if(!unsafe && !whitelisted_string((char*)(img+pos), filename_length)) {
+                fprintf(stderr, "Stored filename contains unusual characters.\n");
+                fprintf(stderr, DECODE_FILENAME_ERR_HELP_MSG);
+                fprintf(stderr, "Or supply -u to ignore this warning.\n");
+                return 1;
+            }
+            if (!(output_file = malloc(filename_length+1))) {
                 perror(MEMORY_ERR);
                 return 1;
             }
-            for (fileit = 0; img[pos] != '\0'; fileit++, pos++) {
-                if (fileit >= filename_length) {
-                    filename_length *= 2;
-                    if (!(output_file = realloc(output_file, filename_length))) {
-                        perror(MEMORY_ERR);
-                        return 1;
-                    }
-                }
-                output_file[fileit] = img[pos];
-            }
-            output_file[fileit] = '\0'; //add nul terminator
-            if (!(output_file = realloc(output_file, fileit + 1))) { //trim char array back to actual size
-                perror(MEMORY_ERR);
-                return 1;
-            }
-            for (int i = 0; output_file[i] != '\0'; i++) {
-                if (output_file[i] == DELIM) {
-                    fprintf(stderr, "Input file contains a path delimiter and may be malicious.\n");
-                    fprintf(stderr, "Use -o to set where to store the resulting file.\n");
-                    return 1;
-                }
-            }
+            strcpy(output_file, (char*)(img+pos));
+            pos += filename_length;
         }
         pos++;
     } else {
