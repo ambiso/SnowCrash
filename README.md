@@ -17,7 +17,7 @@ snowcrash [OPTIONS] file
   -l          enable legacy mode to en- or decode the traditional way 
               (must use -o, does not store filename or size - you will end up with trailing NULs)
   -u          ignore unusual character warning when decoding
-If not using -e or -d the mode is determined by the fileextension - if ".png" it's decoded, otherwise encoded.
+If not using -e or -d the mode is determined by the file-extension - if ".png" it's decoded, otherwise encoded.
 ```
 ## Examples
 ```
