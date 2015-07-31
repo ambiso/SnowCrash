@@ -29,8 +29,7 @@ static void argcpy(char **rop);
 static void auto_mode(char * arg, char **input, enum _mode *mode);
 static char * cut_delim(char * str);
 
-static int whitelisted_string(char const * x);
-static int blacklisted_string(char const * x);
+static int valid_string(char const * x);
 static int whitelisted_char(char x);
 static int blacklisted_char(char x);
 
@@ -204,19 +203,13 @@ static char * cut_delim(char * str) {
     return rop;
 }
 
-
-static int whitelisted_string(char const * x) {
-    for(; *x != '\0'; x++)
-        if(!whitelisted_char(*x))
-            return 0;
-    return 1;
-}
-
-static int blacklisted_string(char const * x) {
+static int valid_string(char const * x) {
     if(strcmp(x, ".") == 0 || strcmp(x, "..") == 0)
-        return 1;
+        return 2;
     for(; *x != '\0'; x++)
         if(blacklisted_char(*x))
+            return 2;
+        else if(!whitelisted_char(*x))
             return 1;
     return 0;
 }
@@ -263,15 +256,20 @@ int encode_file(char const *filename, char const *storename, char const *output_
         fprintf(stderr, "Please choose another one using the -f option.\n");
         return 1;
     }
-    if(blacklisted_string(storename)) {
-        fprintf(stderr, "Filename '%s' contains blacklisted characters.\n", storename);
-        fprintf(stderr, "Please choose another one using the -f option.\n");
-        return 1;
-    }
-    if(!unsafe && !whitelisted_string(storename)) {
-        fprintf(stderr, "Filename '%s' contains unusual characters.\n", storename);
-        fprintf(stderr, "Supply -u to ignore this warning.\n");
-        return 1;
+    switch(valid_string(storename)) {
+        case 2:
+            fprintf(stderr, "Filename '%s' contains blacklisted characters.\n", storename);
+            fprintf(stderr, "Please choose another one using the -f option.\n");
+            return 1;
+        case 1:
+            fprintf(stderr, "Filename '%s' contains unusual characters.\n", storename);
+            if(!unsafe) {
+                fprintf(stderr, "Supply -u to ignore this warning.\n");
+                return 1;
+            }
+            break;
+        default:
+            break;
     }
     FILE * fp = fopen(filename, "rb");
     if(!fp) {
@@ -342,22 +340,27 @@ int decode_file(char const *filename, char *output_file, int legacy) {
             size_t filename_length = 0;
             //full input verification
             #define DECODE_FILENAME_ERR_HELP_MSG "Use -o to set where to store the resulting file.\n"
-            for(; img[pos+filename_length] != '\0'; filename_length++);
+            for(; img[pos+filename_length] != '\0' && filename_length <= MAX_FILENAME_LEN; filename_length++);
             if(filename_length > MAX_FILENAME_LEN) {
                 fprintf(stderr, "Stored output filename is too long.\n");
                 fprintf(stderr, "Try rerunning in legacy mode with -l or supply an output file using -o.\n");
                 return 1;
             }
-            if(blacklisted_string((char*)(img+pos))) {
-                fprintf(stderr, "Stored filename contains blacklisted characters.\n");
-                fprintf(stderr, DECODE_FILENAME_ERR_HELP_MSG);
-                return 1;
-            }
-            if(!unsafe && !whitelisted_string((char*)(img+pos))) {
-                fprintf(stderr, "Stored filename contains unusual characters.\n");
-                fprintf(stderr, DECODE_FILENAME_ERR_HELP_MSG);
-                fprintf(stderr, "Or supply -u to ignore this warning.\n");
-                return 1;
+            switch(valid_string((char*)(img+pos))) {
+                case 2:
+                    fprintf(stderr, "Stored filename contains blacklisted characters.\n");
+                    fprintf(stderr, DECODE_FILENAME_ERR_HELP_MSG);
+                    return 1;
+                case 1:
+                        fprintf(stderr, "Stored filename contains unusual characters.\n");
+                    if(!unsafe) {
+                        fprintf(stderr, DECODE_FILENAME_ERR_HELP_MSG);
+                        fprintf(stderr, "Or supply -u to ignore this warning.\n");
+                        return 1;
+                    }
+                    break;
+                default:
+                    break;
             }
             if (!(output_file = malloc(filename_length+1))) {
                 perror(MEMORY_ERR);
