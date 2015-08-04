@@ -15,13 +15,13 @@
 
 static char const * const MEMORY_ERR = "Cannot allocate memory";
 static size_t const MAX_FILENAME_LEN = 254;
-static int unsafe = 0;
 
 enum _mode {
     MOD_NONE = 0,
     MOD_ENCODE = 1 << 0,
     MOD_DECODE = 1 << 1,
-    MOD_LEGACY = 1 << 2
+    MOD_UNSAFE = 1 << 2,
+    MOD_LEGACY = 1 << 3,
 };
 
 static void print_help(void);
@@ -33,8 +33,8 @@ static int valid_string(char const * x);
 static int whitelisted_char(char x);
 static int blacklisted_char(char x);
 
-int encode_file(char const *filename, char const *storename, char const *output_file, int legacy);
-int decode_file(char const *filename, char *output_file, int legacy);
+int encode_file(char const *filename, char const *storename, char const *output_file, int flags);
+int decode_file(char const *filename, char *output_file, int flags);
 
 void PNG_encode(const char *filename, const unsigned char *image, unsigned width, unsigned height);
 unsigned char *PNG_decode(const char *filename, unsigned *width, unsigned *height);
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
                     print_help();
                     return 0;
                 case 'u':
-                    unsafe = !unsafe;
+                    mode |= MOD_UNSAFE;
                     break;
                 default:
                     fprintf(stderr, "Internal error.\n");
@@ -127,12 +127,12 @@ int main(int argc, char **argv)
             strcpy(output, name_to_store);
             strcat(output, ".png");
         }
-        if(encode_file(input, name_to_store, output, mode & MOD_LEGACY)) {
+        if(encode_file(input, name_to_store, output, mode)) {
             fprintf(stderr, "Error while encoding.\n");
             return 1;
         }
     } else if(mode & MOD_DECODE) {
-        if(decode_file(input, output, mode & MOD_LEGACY)) {
+        if(decode_file(input, output, mode)) {
             fprintf(stderr, "Error while decoding.\n");
             return 1;
         }
@@ -248,7 +248,7 @@ int _getopt(int argc, char **argv, char * optstr) {
     return *option;
 }
 
-int encode_file(char const *filename, char const *storename, char const *output_file, int legacy) {
+int encode_file(char const *filename, char const *storename, char const *output_file, int flags) {
     printf("Encoding to '%s'.\n", output_file);
     size_t filename_length = strlen(storename);
     if(filename_length > MAX_FILENAME_LEN) {
@@ -263,7 +263,7 @@ int encode_file(char const *filename, char const *storename, char const *output_
             return 1;
         case 1:
             fprintf(stderr, "Filename '%s' contains unusual characters.\n", storename);
-            if(!unsafe) {
+            if(!(flags & MOD_UNSAFE)) {
                 fprintf(stderr, "Supply -u to ignore this warning.\n");
                 return 1;
             }
@@ -284,7 +284,7 @@ int encode_file(char const *filename, char const *storename, char const *output_
     //determine image dimensions (width = height)
     size_t storename_len = strlen(storename);
     unsigned dimension;
-    if(!legacy) {
+    if(!(flags & MOD_LEGACY)) {
         dimension = (unsigned)(ceil(sqrt(ceil((size + sizeof size + strlen(storename) + 1)/4.0))));
     } else {
         dimension = (unsigned)(ceil(sqrt(ceil((size)/4.0))));
@@ -298,7 +298,7 @@ int encode_file(char const *filename, char const *storename, char const *output_
     }
     //stash filesize in content
     uint64_t pos = 0;
-    if(!legacy) {
+    if(!(flags & MOD_LEGACY)) {
         for (; pos < sizeof size; pos++) {
             content[pos] = (unsigned char) ((size & ((((uint64_t) (1 << 8) - 1)) << (pos * 8))) >> (pos * 8));
         }
@@ -318,7 +318,7 @@ int encode_file(char const *filename, char const *storename, char const *output_
     return 0;
 }
 
-int decode_file(char const *filename, char *output_file, int legacy) {
+int decode_file(char const *filename, char *output_file, int flags) {
     int out_file_provided = 0;
     if(output_file) {
         out_file_provided = 1;
@@ -329,7 +329,7 @@ int decode_file(char const *filename, char *output_file, int legacy) {
     size_t pos = 0;
     //load size
     uint64_t size = 0;
-    if(!legacy) {
+    if(!(flags & MOD_LEGACY)) {
         for (; pos < sizeof size; pos++) {
             size = size | (((uint64_t) img[pos]) << (8 * pos));
         }
@@ -353,7 +353,7 @@ int decode_file(char const *filename, char *output_file, int legacy) {
                     return 1;
                 case 1:
                         fprintf(stderr, "Stored filename contains unusual characters.\n");
-                    if(!unsafe) {
+                    if(!(flags & MOD_UNSAFE)) {
                         fprintf(stderr, DECODE_FILENAME_ERR_HELP_MSG);
                         fprintf(stderr, "Or supply -u to ignore this warning.\n");
                         return 1;
