@@ -250,8 +250,8 @@ int _getopt(int argc, char **argv, char * optstr) {
 
 int encode_file(char const *filename, char const *storename, char const *output_file, int flags) {
     printf("Encoding to '%s'.\n", output_file);
-    size_t filename_length = strlen(storename);
-    if(filename_length > MAX_FILENAME_LEN) {
+    size_t storename_len = strlen(storename);
+    if(storename_len > MAX_FILENAME_LEN) {
         fprintf(stderr, "Filename '%s' is too long.\n", storename);
         fprintf(stderr, "Please choose another one using the -f option.\n");
         return 1;
@@ -282,7 +282,6 @@ int encode_file(char const *filename, char const *storename, char const *output_
     fseek(fp, 0, SEEK_SET);
 
     //determine image dimensions (width = height)
-    size_t storename_len = strlen(storename);
     unsigned dimension;
     if(!(flags & MOD_LEGACY)) {
         dimension = (unsigned)(ceil(sqrt(ceil((size + sizeof size + strlen(storename) + 1)/4.0))));
