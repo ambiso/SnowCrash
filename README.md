@@ -7,18 +7,6 @@ The file can then be decoded again.
 make
 sudo make install
 ```
-## Usage
-```
-snowcrash [OPTIONS] file
-  -e [FILE]   encode a file
-  -d [FILE]   decode a file
-  -o [FILE]   specify where to store the output
-  -f [FILE]   specify what filename to store inside the PNG (cannot be used in conjunction with -d)
-  -l          enable legacy mode to en- or decode the traditional way 
-              (must use -o, does not store filename or size - you will end up with trailing NULs)
-  -u          ignore unusual character warning
-If not using -e or -d the mode is determined by the file-extension - if ".png" it's decoded, otherwise encoded.
-```
 ## Examples
 
 Encode watermelon.flac to watermelon.flac.png
@@ -41,4 +29,17 @@ snowcrash -o friday.flac watermelon.flac.png
 Encode hulk.png, store lovely.png as filename and output to hot.png
 ```
 snowcrash -e hulk.png -f lovely.png -o hot.png
+```
+
+## Usage
+```
+snowcrash [OPTIONS] file
+  -e [FILE]   encode a file
+  -d [FILE]   decode a file
+  -o [FILE]   specify where to store the output
+  -f [FILE]   specify what filename to store inside the PNG (cannot be used in conjunction with -d)
+  -l          enable legacy mode to en- or decode the traditional way 
+              (must use -o, does not store filename or size - you will end up with trailing NULs)
+  -u          ignore unusual character warning
+If not using -e or -d the mode is determined by the file-extension - if ".png" it's decoded, otherwise encoded.
 ```
