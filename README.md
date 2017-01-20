@@ -20,10 +20,25 @@ snowcrash [OPTIONS] file
 If not using -e or -d the mode is determined by the file-extension - if ".png" it's decoded, otherwise encoded.
 ```
 ## Examples
+
+Encode watermelon.flac to watermelon.flac.png
 ```
-snowcrash watermelon.flac - will encode watermelon.flac to watermelon.flac.png
-snowcrash -e watermelon.flac - identical to the above
-snowcrash -o friday.flac watermelon.flac.png - will decode the image-file and save it to friday.flac
-snowcrash -e hulk.png -f lovely.png -o hot.png - will encode hulk.png, store lovely.png as filename and output to hot.png
-snowcrash hot.png - will decode hot.png and save to lovely.png
+snowcrash watermelon.flac
+snowcrash -e watermelon.flac
+```
+
+Decode watermelon.flac.png
+```
+snowcrash watermelon.flac.png
+```
+
+
+Decode watermelon.flac.png and save it to friday.flac
+```
+snowcrash -o friday.flac watermelon.flac.png
+```
+
+Encode hulk.png, store lovely.png as filename and output to hot.png
+```
+snowcrash -e hulk.png -f lovely.png -o hot.png
 ```
