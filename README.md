@@ -1,5 +1,8 @@
 # SnowCrash
-SnowCrash takes a file and crushes it into a PNG.  
+
+![Image showing a file and image and a double arrow between them](snowcrash_demo.png)
+
+SnowCrash takes a file and crushes it into a PNG.  
 The file can then be decoded again.
 
 ## Installation:
